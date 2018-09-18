@@ -5,11 +5,8 @@
 package gostrftime
 
 import (
-	"fmt"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
 )
 
 var formattests = []struct {
@@ -78,18 +75,18 @@ var formattests = []struct {
 
 func TestStrfFormat(t *testing.T) {
 	t.Parallel()
-	assert := assert.New(t)
 
 	tm := time.Date(2009, time.January, 2, 3, 4, 0, 1234567, time.UTC)
 	for _, tt := range formattests {
 		output := Format(tt.format, tm)
-		assert.Equal(tt.expected, output, fmt.Sprintf("%s not right", tt.format))
+		if output != tt.expected {
+			t.Errorf("Format(%q) gave %q, want %q", tt.format, output, tt.expected)
+		}
 	}
 }
 
 func TestStrfFormatNotUTC(t *testing.T) {
 	t.Parallel()
-	assert := assert.New(t)
 
 	// use a timezone that doesn't do daylight savings
 	location := time.FixedZone("Saskatchewan", -6*60*60)
@@ -107,7 +104,9 @@ func TestStrfFormatNotUTC(t *testing.T) {
 			expected = tt.expected
 		}
 		output := Format(tt.format, tm)
-		assert.Equal(expected, output, fmt.Sprintf("%s not right", tt.format))
+		if output != expected {
+			t.Errorf("Format(%q) gave %q, want %q", tt.format, output, expected)
+		}
 	}
 }
 
