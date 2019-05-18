@@ -6,14 +6,13 @@
 package gostrftime
 
 import (
-	"bytes"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 )
 
-func strftime(b *bytes.Buffer, c rune, t time.Time) error {
+func strftime(b *strings.Builder, c rune, t time.Time) error {
 	switch c {
 	case 'A':
 		b.WriteString(t.Weekday().String())
@@ -177,7 +176,7 @@ func Format(format string, t time.Time) string {
 		return format
 	}
 
-	outBuf := &bytes.Buffer{}
+	outBuf := &strings.Builder{}
 	rr := strings.NewReader(format)
 	for {
 		r, _, err := rr.ReadRune()
