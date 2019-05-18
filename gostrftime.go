@@ -10,10 +10,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode/utf8"
 )
 
-func strftime(b *strings.Builder, c rune, t time.Time) bool {
+func strftime(b *strings.Builder, c byte, t time.Time) bool {
 	switch c {
 	case 'A':
 		b.WriteString(t.Weekday().String())
@@ -187,19 +186,8 @@ func Format(format string, t time.Time) string {
 			// so we can just ignore it and finish
 			break
 		}
-		nr, size := utf8.DecodeRuneInString(format[i+1:])
-		if nr == utf8.RuneError {
-			// for invalid UTF-8 we just leave
-			// as-is by advancing i to the next '%'
-			// (or set i to -1)
-			x := i + 2
-			i = strings.IndexByte(format[x:], '%')
-			if i >= 0 {
-				i += x
-			}
-			continue
-		}
 
+		nr := format[i+1]
 		// we have a possible formatting directive nr,
 		// write out everything up to the % and attempt to handle it
 		outBuf.WriteString(format[:i])
@@ -208,10 +196,10 @@ func Format(format string, t time.Time) string {
 		} else if !strftime(outBuf, nr, t) {
 			// not a valid/recognized format character
 			outBuf.WriteByte('%')
-			outBuf.WriteRune(nr)
+			outBuf.WriteByte(nr)
 		}
 		// advance format and setup next i
-		format = format[i+1+size:]
+		format = format[i+2:]
 		i = strings.IndexByte(format, '%')
 	}
 	outBuf.WriteString(format)
