@@ -10,9 +10,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
-func strftime(b *strings.Builder, c rune, t time.Time) error {
+func strftime(b *strings.Builder, c rune, t time.Time) bool {
 	switch c {
 	case 'A':
 		b.WriteString(t.Weekday().String())
@@ -124,10 +125,10 @@ func strftime(b *strings.Builder, c rune, t time.Time) error {
 		allMinutes := int(offset / 60)
 		fmt.Fprintf(b, "%+03d%02d", int(allMinutes/60), int(allMinutes%60))
 	default:
-		return fmt.Errorf("No valid replacement")
+		return false
 	}
 
-	return nil
+	return true
 }
 
 // Format returns a textual representation of the time value
@@ -172,42 +173,49 @@ func strftime(b *strings.Builder, c rune, t time.Time) error {
 //  %Z  time zone name (UTC)
 //  %z  the time zone offset from UTC (-0700)
 func Format(format string, t time.Time) string {
-	if !strings.Contains(format, "%") {
+	i := strings.IndexByte(format, '%')
+	if i < 0 || i == len(format)-1 {
 		return format
 	}
-
 	outBuf := &strings.Builder{}
-	rr := strings.NewReader(format)
-	for {
-		r, _, err := rr.ReadRune()
-		if err != nil {
+	for i >= 0 {
+		// at top of loop format[i] == '%' and format[:i] needs
+		// to be writen to outBuf
+
+		if i == len(format)-1 {
+			// a trailing percent is just written as-is
+			// so we can just ignore it and finish
 			break
 		}
-
-		if r != '%' {
-			outBuf.WriteRune(r)
+		nr, size := utf8.DecodeRuneInString(format[i+1:])
+		if nr == utf8.RuneError {
+			// for invalid UTF-8 we just leave
+			// as-is by advancing i to the next '%'
+			// (or set i to -1)
+			x := i + 2
+			i = strings.IndexByte(format[x:], '%')
+			if i >= 0 {
+				i += x
+			}
 			continue
 		}
 
-		nr, _, err := rr.ReadRune()
-		if err != nil {
-			// got a percent, but then end of string
-			// just append % and finish
-			outBuf.WriteByte('%')
-			break
-		}
+		// we have a possible formatting directive nr,
+		// write out everything up to the % and attempt to handle it
+		outBuf.WriteString(format[:i])
 		if nr == '%' {
 			outBuf.WriteByte('%')
-			continue
-		}
-
-		err = strftime(outBuf, nr, t)
-		if err != nil {
+		} else if !strftime(outBuf, nr, t) {
+			// not a valid/recognized format character
 			outBuf.WriteByte('%')
 			outBuf.WriteRune(nr)
-			continue
 		}
+		// advance format and setup next i
+		format = format[i+1+size:]
+		i = strings.IndexByte(format, '%')
 	}
+	outBuf.WriteString(format)
+
 	return outBuf.String()
 }
 
